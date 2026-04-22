@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ROYAL LIFE SCIENCE - Final Billing</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{background:#f4f6f8;color:#222}
+input,select,button{
+width:100%;padding:11px;margin:6px 0;
+border-radius:10px;border:1px solid #ddd;font-size:15px
+}
+button{
+background:#0f8c3a;color:#fff;border:none;
+font-weight:bold;cursor:pointer
+}
+button:hover{opacity:.9}
+
+.login{
+max-width:430px;margin:60px auto;background:#fff;
+padding:25px;border-radius:20px;
+box-shadow:0 10px 30px rgba(0,0,0,.08)
+}
+
+.header{
+background:#0b5e2e;color:#fff;
+padding:14px;display:flex;
+justify-content:space-between;align-items:center;
+font-weight:bold;position:sticky;top:0;z-index:999
+}
+
+.container{display:flex;gap:10px;padding:10px}
+.products{width:65%}
+.cart{
+width:35%;background:#fff;padding:15px;
+border-radius:18px;
+box-shadow:0 10px 25px rgba(0,0,0,.05)
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:12px
+}
+
+.card{
+background:#fff;padding:15px;border-radius:18px;
+box-shadow:0 8px 20px rgba(0,0,0,.06);
+text-align:center
+}
+
+.card img{
+width:120px;height:120px;
+object-fit:cover;border-radius:15px
+}
+
+.pname{font-weight:bold;margin:10px 0;min-height:42px}
+.price{font-size:22px;color:#0f8c3a;font-weight:bold}
+.small{font-size:13px;color:#666;margin:5px 0}
+.qty{width:85px;margin:auto}
+
+.admin{
+background:#fff;margin:10px;padding:15px;
+border-radius:18px;
+box-shadow:0 10px 25px rgba(0,0,0,.05)
+}
+
+.invoiceBox{
+display:none;position:fixed;left:0;top:0;
+width:100%;height:100%;
+background:#fff;overflow:auto;z-index:9999;
+padding:10px
+}
+
+.invoice{
+max-width:850px;margin:auto;background:#fff;
+padding:20px;border:1px solid #ccc
+}
+
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{
+border:1px solid #000;
+padding:6px;text-align:center;font-size:12px
+}
+
+@media(max-width:900px){
+.container{flex-direction:column}
+.products,.cart{width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginBox" class="login">
+<h2 style="text-align:center;margin-bottom:15px">ROYAL LIFE SCIENCE</h2>
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- MAIN -->
+<div id="main" style="display:none">
+
+<div class="header">
+<span>ROYAL LIFE SCIENCE</span>
+<button onclick="logout()">Logout</button>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="admin" style="display:none">
+
+<h3>📦 Product Management</h3>
+
+<input id="pname" placeholder="Product Name">
+<input id="pp" placeholder="Purchase Price">
+<input id="ps" placeholder="Sale Price">
+<input id="pg" placeholder="GST%">
+<input id="pstock" placeholder="Stock">
+
+<!-- CAMERA -->
+<input type="file" id="pimg" accept="image/*" capture="environment">
+
+<button onclick="addProduct()">➕ Add Product</button>
+<button onclick="editProduct()">✏ Edit Product</button>
+<button onclick="deleteProduct()">🗑 Delete Product</button>
+
+<hr><br>
+
+<h3>👤 User Management</h3>
+
+<input id="uname" placeholder="Username">
+<input id="upass" placeholder="Password">
+
+<select id="urole">
+<option value="admin">admin</option>
+<option value="staff">staff</option>
+<option value="user">user</option>
+</select>
+
+<button onclick="addUser()">➕ Add User</button>
+<button onclick="editUser()">✏ Edit User</button>
+<button onclick="deleteUser()">🗑 Delete User</button>
+
+</div>
+
+<div class="container">
+
+<!-- PRODUCTS -->
+<div class="products">
+
+<input id="searchBox" placeholder="Search Products..." onkeyup="renderProducts()">
+
+<div id="plist" class="grid"></div>
+
+</div>
+
+<!-- CART -->
+<div class="cart">
+
+<h2>Cart</h2>
+
+<div id="cartList"></div>
+
+<h2 id="total">₹0</h2>
+
+<button onclick="previewInvoice()">Preview</button>
+<button onclick="downloadPDF()">Download</button>
+<button onclick="printBill()">Print</button>
+<button onclick="sendWhatsAppOrder()">WhatsApp Order</button>
+
+</div>
+
+</div>
+</div>
+
+<!-- INVOICE -->
+<div id="invoiceBox" class="invoiceBox">
+
+<div id="printArea" class="invoice">
+
+<center>
+<h2>ROYAL LIFE SCIENCE</h2>
+<p>Gudiyatham</p>
+<p>Mobile: 9842308991</p>
+</center>
+
+<hr>
+
+Customer:
+<input id="custName" placeholder="Customer Name">
+
+<p>
+Bill No: <span id="billNo"></span>
+|
+Date: <span id="billDate"></span>
+</p>
+
+<table>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Rate</th>
+<th>GST</th>
+<th>Total</th>
+</tr>
+<tbody id="invTable"></tbody>
+</table>
+
+<h2>Total ₹<span id="grand"></span></h2>
+
+<div id="qr"></div>
+
+</div>
+
+<br>
+
+<button onclick="closeInvoice()">Back</button>
+<button onclick="printBill()">Print</button>
+<button onclick="downloadPDF()">Download</button>
+
+</div>
+
+<script>
+const API="https://script.google.com/macros/s/AKfycbzGBsO0K3LgHK-mcvIDdhUGAfszW41FGesXrefnyeseW5QZOFsDcQzSGn7LCq8Ha3Wpmw/exec";
+const KEY="ROYAL123";
+
+let products=[];
+let cart=[];
+let role="";
+
+/* LOGIN */
+async function login(){
+let r=await fetch(`${API}?action=login&username=${username.value}&password=${password.value}&key=${KEY}`);
+let d=await r.json();
+
+if(d.status){
+role=d.role;
+loginBox.style.display="none";
+main.style.display="block";
+
+if(role=="admin"){
+adminPanel.style.display="block";
+}
+
+loadProducts();
+
+}else{
+alert("Login Failed");
+}
+}
+
+function logout(){location.reload()}
+
+/* PRODUCTS LOAD */
+async function loadProducts(){
+let r=await fetch(`${API}?action=getProducts&key=${KEY}`);
+products=await r.json();
+renderProducts();
+}
+
+/* SHOW PRODUCTS */
+function renderProducts(){
+
+let val=searchBox.value.toLowerCase();
+let html="";
+
+products.slice(1).forEach((p,i)=>{
+
+if((p[1]||"").toLowerCase().includes(val)){
+
+let purchase=+p[2];
+let sale=+p[3];
+
+html+=`
+<div class="card">
+
+<img src="${p[6] || 'https://via.placeholder.com/150'}">
+
+<div class="pname">${p[1]}</div>
+
+${role=="admin" || role=="staff" ? `
+<div class="small">Purchase ₹${purchase}</div>
+<input type="number" placeholder="%"
+oninput="calcPrice(${i},this.value)">
+` : ''}
+
+<div class="price">₹<span id="sp${i}">${sale}</span></div>
+
+<div class="small">Stock ${p[5]}</div>
+
+<input class="qty" id="q${i}" type="number" value="1" min="1">
+
+<button onclick="addToCart(${i})">Add To Cart</button>
+
+</div>
+`;
+}
+});
+
+plist.innerHTML=html;
+}
+
+/* SALE CALC */
+function calcPrice(i,percent){
+let purchase=+products[i+1][2];
+let finalPrice=purchase+(purchase*(percent||0)/100);
+document.getElementById("sp"+i).innerText=finalPrice.toFixed(2);
+}
+
+/* CART */
+function addToCart(i){
+
+let qty=+document.getElementById("q"+i).value;
+let price=+document.getElementById("sp"+i).innerText;
+
+cart.push({
+name:products[i+1][1],
+qty:qty,
+price:price,
+gst:+products[i+1][4]
+});
+
+renderCart();
+}
+
+function renderCart(){
+
+let html="";
+let total=0;
+
+cart.forEach((c,i)=>{
+
+let t=c.qty*c.price*(1+c.gst/100);
+total+=t;
+
+html+=`
+<div style="padding:8px;border-bottom:1px solid #eee">
+${c.name}<br>
+${c.qty} x ₹${c.price} = ₹${t.toFixed(2)}
+<button onclick="removeCart(${i})">X</button>
+</div>
+`;
+});
+
+cartList.innerHTML=html;
+total.innerText="₹"+total.toFixed(2);
+document.getElementById("total").innerText="₹"+total.toFixed(2);
+}
+
+function removeCart(i){
+cart.splice(i,1);
+renderCart();
+}
+
+/* INVOICE */
+function previewInvoice(){
+
+if(cart.length==0){
+alert("Cart Empty");
+return;
+}
+
+let html="";
+let grand=0;
+
+cart.forEach(c=>{
+
+let t=c.qty*c.price*(1+c.gst/100);
+grand+=t;
+
+html+=`
+<tr>
+<td>${c.name}</td>
+<td>${c.qty}</td>
+<td>${c.price}</td>
+<td>${c.gst}%</td>
+<td>${t.toFixed(2)}</td>
+</tr>
+`;
+});
+
+invTable.innerHTML=html;
+
+grand=Math.round(grand);
+
+grand.innerText=grand;
+document.getElementById("grand").innerText=grand;
+
+billNo.innerText="RLS"+Date.now();
+billDate.innerText=new Date().toLocaleDateString();
+
+invoiceBox.style.display="block";
+
+qr.innerHTML="";
+
+new QRCode(qr,{
+text:`upi://pay?pa=Q544943236@ybl&pn=Royal Life Science&am=${grand}`,
+width:120,
+height:120
+});
+}
+
+function closeInvoice(){invoiceBox.style.display="none"}
+function printBill(){window.print()}
+function downloadPDF(){html2pdf().from(printArea).save()}
+
+/* WHATSAPP */
+function sendWhatsAppOrder(){
+
+if(cart.length==0){
+alert("Cart Empty");
+return;
+}
+
+let msg="*ROYAL LIFE SCIENCE ORDER*%0A%0A";
+
+cart.forEach(c=>{
+msg+=`${c.name} x ${c.qty} = ₹${(c.qty*c.price).toFixed(2)}%0A`;
+});
+
+window.open("https://wa.me/?text="+msg,"_blank");
+}
+
+/* PRODUCT MANAGEMENT */
+async function addProduct(){
+
+let file=document.getElementById("pimg").files[0];
+let img="";
+
+if(file){
+img=URL.createObjectURL(file);
+}
+
+await fetch(`${API}?action=addProduct&name=${pname.value}&purchase=${pp.value}&sale=${ps.value}&gst=${pg.value}&stock=${pstock.value}&image=${encodeURIComponent(img)}&key=${KEY}`);
+
+alert("Product Added");
+loadProducts();
+}
+
+async function editProduct(){
+await fetch(`${API}?action=editProduct&name=${pname.value}&purchase=${pp.value}&sale=${ps.value}&gst=${pg.value}&stock=${pstock.value}&key=${KEY}`);
+alert("Product Updated");
+loadProducts();
+}
+
+async function deleteProduct(){
+if(confirm("Delete Product?")){
+await fetch(`${API}?action=deleteProduct&name=${pname.value}&key=${KEY}`);
+alert("Product Deleted");
+loadProducts();
+}
+}
+
+/* USER MANAGEMENT */
+async function addUser(){
+await fetch(`${API}?action=addUser&username=${uname.value}&password=${upass.value}&role=${urole.value}&key=${KEY}`);
+alert("User Added");
+}
+
+async function editUser(){
+await fetch(`${API}?action=editUser&username=${uname.value}&password=${upass.value}&role=${urole.value}&key=${KEY}`);
+alert("User Updated");
+}
+
+async function deleteUser(){
+if(confirm("Delete User?")){
+await fetch(`${API}?action=deleteUser&username=${uname.value}&key=${KEY}`);
+alert("User Deleted");
+}
+}
+</script>
+</body>
+</html>
